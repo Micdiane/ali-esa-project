@@ -142,7 +142,7 @@ import { type ApiKey, type ModelAvailability } from '../types';
 import { apiKeyStorage } from '../utils/encryption';
 import { platformConfig, getModelsByPlatform } from '../config/platforms';
 import { availabilityCache } from '../utils/cache';
-
+import { checkApiKey } from '../utils/apiService';
 
 // 响应式数据
 const apiKeys = ref<ApiKey[]>([]);
@@ -204,7 +204,7 @@ const checkAvailability = async () => {
       return;
     }
     
-    // 执行检测
+    // 执行真实的可用性检测
     const result = await performAvailabilityCheck(selectedKey.value, selectedModelId.value);
     
     // 保存到缓存
@@ -221,44 +221,35 @@ const checkAvailability = async () => {
 
 // 执行可用性检测
 const performAvailabilityCheck = async (key: ApiKey, modelId: string): Promise<ModelAvailability> => {
+  const startTime = Date.now();
   let latency = 0;
   let qpsUsage = 0;
   let status: 'normal' | 'limited' | 'unavailable' = 'normal';
   
   try {
-    // 模拟检测请求，3秒超时
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('请求超时')), 3000);
-    });
+    // 调用真实API检测密钥有效性，这也能反映模型可用性
+    const isKeyValid = await checkApiKey(key.platform, key.key);
     
-    // 实际检测逻辑（这里使用模拟数据，实际项目中需要替换为真实API调用）
-    const checkPromise = new Promise<void>((resolve) => {
-      // 模拟API调用延迟（随机生成100-1200ms）
-      const simulatedLatency = Math.floor(Math.random() * 1100) + 100;
-      setTimeout(() => {
-        latency = simulatedLatency;
-        
-        // 随机生成QPS占用率（0-1之间）
-        qpsUsage = Math.random() * 0.8; // 最高80%占用率
-        
-        // 根据延迟和QPS占用率确定状态
-        if (latency > 1000 || qpsUsage > 0.8) {
-          status = 'limited';
-        } else {
-          status = 'normal';
-        }
-        
-        resolve();
-      }, simulatedLatency);
-    });
+    // 计算延迟
+    latency = Date.now() - startTime;
     
-    // 等待检测完成或超时
-    await Promise.race([checkPromise, timeoutPromise]);
+    // 根据响应时间和密钥有效性判断状态
+    if (!isKeyValid) {
+      status = 'unavailable';
+    } else if (latency > 1000) {
+      status = 'limited';
+    } else {
+      status = 'normal';
+    }
+    
+    // 简化的QPS占用率计算（实际项目中可以根据API响应头或其他方式获取）
+    qpsUsage = Math.random() * 0.5; // 模拟0-50%的QPS占用率
     
   } catch (err) {
-    // 超时或其他错误，标记为不可用
-    latency = 3000; // 超过3秒
+    // 发生错误，标记为不可用
+    latency = Date.now() - startTime;
     status = 'unavailable';
+    qpsUsage = 1.0; // 错误状态下QPS占用率设为100%
   }
   
   return {

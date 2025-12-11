@@ -89,11 +89,11 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { Platform, type ApiKey, type QuotaInfo } from '../types';
+import { type ApiKey, type QuotaInfo } from '../types';
 import { apiKeyStorage } from '../utils/encryption';
 import { platformConfig } from '../config/platforms';
 import { quotaCache } from '../utils/cache';
-
+import { checkBalance } from '../utils/apiService';
 
 // 响应式数据
 const apiKeys = ref<ApiKey[]>([]);
@@ -135,19 +135,17 @@ const checkQuota = async () => {
       return;
     }
     
-    // 根据平台调用不同的配额接口
-    let quotaData: QuotaInfo;
+    // 调用真实API获取余额信息
+    const balanceData = await checkBalance(selectedKey.platform, selectedKey.key);
     
-    switch (selectedKey.platform) {
-      case Platform.BAIDU_QIANFAN:
-        quotaData = await checkBaiduQianfanQuota(selectedKey);
-        break;
-      case Platform.TONGYI_QIANWEN:
-        quotaData = await checkTongyiQianwenQuota(selectedKey);
-        break;
-      default:
-        throw new Error(`暂不支持${platformConfig[selectedKey.platform]?.name}的配额查询`);
-    }
+    // 处理不同平台的返回数据，统一格式
+    const quotaData: QuotaInfo = {
+      platform: selectedKey.platform,
+      remainingTokens: balanceData.remaining_tokens || balanceData.available_tokens || 0,
+      usedRatio: balanceData.used_ratio || balanceData.usage_ratio || 0,
+      resetTime: balanceData.reset_time || balanceData.next_reset || '每月 1 日',
+      lastChecked: new Date()
+    };
     
     // 保存到缓存
     quotaCache.set(cacheKey, quotaData);
@@ -159,70 +157,6 @@ const checkQuota = async () => {
     error.value = err instanceof Error ? err.message : '查询失败，请检查网络连接或API密钥';
     isChecking.value = false;
   }
-};
-
-// 检查百度千帆配额
-const checkBaiduQianfanQuota = async (key: ApiKey): Promise<QuotaInfo> => {
-  // 实际调用百度千帆配额接口
-  // 这里使用模拟数据，实际项目中需要替换为真实API调用
-  
-  // 模拟API调用延迟
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  // 模拟返回数据
-  return {
-    platform: key.platform,
-    remainingTokens: 123456,
-    usedRatio: 0.35,
-    resetTime: '每月 1 日',
-    lastChecked: new Date()
-  };
-  
-  // 真实API调用示例（需要替换为实际可用的API）
-  // const response = await axios.get('https://console.bce.baidu.com/qianfan/ais/console/quota', {
-  //   headers: {
-  //     'Authorization': `Bearer ${key.key}`
-  //   }
-  // });
-  // return {
-  //   platform: key.platform,
-  //   remainingTokens: response.data.remainingTokens,
-  //   usedRatio: response.data.usedRatio,
-  //   resetTime: response.data.resetTime,
-  //   lastChecked: new Date()
-  // };
-};
-
-// 检查通义千问配额
-const checkTongyiQianwenQuota = async (key: ApiKey): Promise<QuotaInfo> => {
-  // 实际调用通义千问配额接口
-  // 这里使用模拟数据，实际项目中需要替换为真实API调用
-  
-  // 模拟API调用延迟
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  // 模拟返回数据
-  return {
-    platform: key.platform,
-    remainingTokens: 98765,
-    usedRatio: 0.12,
-    resetTime: '每月 1 日',
-    lastChecked: new Date()
-  };
-  
-  // 真实API调用示例（需要替换为实际可用的API）
-  // const response = await axios.get('https://dashscope.aliyuncs.com/api/v1/account/quota', {
-  //   headers: {
-  //     'Authorization': `Bearer ${key.key}`
-  //   }
-  // });
-  // return {
-  //   platform: key.platform,
-  //   remainingTokens: response.data.remainingTokens,
-  //   usedRatio: response.data.usedRatio,
-  //   resetTime: response.data.resetTime,
-  //   lastChecked: new Date()
-  // };
 };
 
 // 格式化日期

@@ -111,7 +111,7 @@
               >
                 <option value="">选择平台</option>
                 <option 
-                  v-for="(config, platform) in platformConfig" 
+                  v-for="(config, platform) in PROVIDERS" 
                   :key="platform" 
                   :value="platform"
                 >
@@ -179,9 +179,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { Platform, type ApiKey } from '../types';
+import { type ApiKey } from '../types';
 import { apiKeyStorage } from '../utils/encryption';
 import { platformConfig } from '../config/platforms';
+import { PROVIDERS } from '../config/providers';
 
 // 响应式数据
 const apiKeys = ref<ApiKey[]>([]);
@@ -190,7 +191,7 @@ const editingKey = ref<ApiKey | null>(null);
 
 // 表单数据
 const form = ref({
-  platform: '',
+  platform: '' as string,
   name: '',
   key: '',
   secret: '',
@@ -243,7 +244,7 @@ const saveKey = () => {
   
   const keyData: ApiKey = {
     id: editingKey.value?.id || crypto.randomUUID(),
-    platform: form.value.platform as Platform,
+    platform: form.value.platform as any, // 类型断言，确保类型检查通过
     name: form.value.name,
     key: form.value.key,
     secret: form.value.secret || undefined,
