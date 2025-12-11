@@ -1,5 +1,178 @@
-# Vue 3 + TypeScript + Vite
+# API Key 管理平台
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+一个集中管理多平台 API 密钥的静态 Web 应用，支持余额查询、模型查询和可用性检测功能。
 
-Learn more about the recommended Project Setup and IDE Support in the [Vue Docs TypeScript Guide](https://vuejs.org/guide/typescript/overview.html#project-setup).
+本项目由[阿里云ESA](https://www.aliyun.com/product/esa)提供加速、计算和保护
+
+![1765466330669](image/README/1765466330669.png)
+
+## 核心功能
+
+### 🔑 密钥管理
+
+- 支持添加主流 LLM 平台密钥（百度千帆、通义千问、智谱 GLM、字节豆包等）
+- AES 加密存储，仅用户本人可查看/编辑，避免明文泄露
+- 支持给密钥打标签，实现多密钥分类管理
+- 友好的密钥添加、编辑和删除界面
+
+### 💰 余额/配额查询
+
+- 对接主流平台官方配额接口
+  - 百度千帆：调用 `https://console.bce.baidu.com/qianfan/ais/console/quota`
+  - 通义千问：调用 `https://dashscope.aliyuncs.com/api/v1/account/quota`
+- 结果展示：剩余 Token 数、已用比例、额度重置时间
+- ESA 缓存机制：查询结果保留 10 分钟，减少 API 调用消耗
+
+### 🤖 模型查询
+
+- 内置各平台免费/常用模型列表
+- 展示模型核心参数：
+  - 上下文窗口（如 8K/32K）
+  - QPS 限制（如百度 50、通义 2）
+  - 支持功能（文本生成/多模态）
+  - 是否免费
+- 支持按平台和免费状态过滤
+
+### 📊 模型可用程度检测
+
+- **响应延迟**：通过边缘函数发起轻量测试请求，返回 <500ms/500-1000ms/>1000ms 分级
+- **QPS 占用率**：实时监测 API 调用频率
+- **状态检测**：返回 "正常/限流/不可用" 状态
+- 3 秒内无响应则判定为 "不可用"
+
+## 技术栈
+
+- **前端框架**：Vue 3
+- **开发语言**：TypeScript
+- **构建工具**：Vite
+- **状态管理**：Vue Composition API
+- **样式**：原生 CSS
+- **加密库**：CryptoJS
+- **HTTP 客户端**：Axios
+
+## 快速开始
+
+### 安装依赖
+
+```bash
+npm install
+```
+
+### 开发模式
+
+```bash
+npm run dev
+```
+
+访问 http://localhost:5173/ 查看应用
+
+### 生产构建
+
+```bash
+npm run build
+```
+
+构建产物将生成在 `dist` 目录，可以部署到任何静态文件服务器
+
+## 使用说明
+
+### 1. 添加 API 密钥
+
+1. 点击 "密钥管理" 标签
+2. 点击 "添加密钥" 按钮
+3. 选择平台，输入密钥信息和标签
+4. 点击 "保存" 按钮
+
+### 2. 查询余额/配额
+
+1. 点击 "余额查询" 标签
+2. 选择要查询的密钥
+3. 点击 "查询配额" 按钮
+4. 查看查询结果（支持缓存）
+
+### 3. 查询模型信息
+
+1. 点击 "模型查询" 标签
+2. 可选：按平台或免费状态过滤
+3. 浏览模型列表和核心参数
+
+### 4. 检测模型可用性
+
+1. 点击 "可用性检测" 标签
+2. 选择密钥和模型
+3. 点击 "开始检测" 按钮
+4. 查看检测结果（响应延迟、QPS 占用率、状态）
+
+## 项目结构
+
+```
+src/
+├── components/          # Vue 组件
+│   ├── ApiKeyManager.vue              # 密钥管理
+│   ├── QuotaChecker.vue              # 余额查询
+│   ├── ModelQuery.vue                # 模型查询
+│   └── ModelAvailabilityChecker.vue  # 可用性检测
+├── config/             # 配置文件
+│   └── platforms.ts    # 平台和模型配置
+├── types/              # TypeScript 类型定义
+│   └── index.ts        # 类型声明
+├── utils/              # 工具函数
+│   ├── encryption.ts   # 加密存储
+│   └── cache.ts        # ESA 缓存机制
+└── App.vue             # 主应用组件
+```
+
+## 核心技术实现
+
+### 加密存储
+
+使用 AES 加密算法存储 API 密钥，确保密钥安全：
+
+- 生成随机密钥和初始化向量
+- 加密后存储到 localStorage
+- 仅用户浏览器可解密查看
+
+### ESA 缓存机制
+
+实现高效的缓存机制，减少 API 调用：
+
+- 默认缓存时间：10 分钟
+- 自动清理过期缓存
+- 支持按类型缓存（余额、模型、可用性）
+
+### 响应式设计
+
+适配不同设备尺寸：
+
+- 桌面端：多列网格布局
+- 移动端：单列布局
+- 自适应导航栏
+
+## 支持的平台
+
+- ✅ 百度千帆
+- ✅ 通义千问
+- ✅ 智谱 GLM
+- ✅ 字节豆包
+
+## 浏览器兼容性
+
+- Chrome (推荐)
+- Firefox
+- Safari
+- Edge
+
+## 安全注意事项
+
+1. 本应用仅在浏览器端运行，不会将密钥发送到任何服务器
+2. 密钥使用 AES 加密存储在浏览器 localStorage 中
+3. 请定期备份您的密钥信息
+4. 建议使用强密码保护您的浏览器
+
+## 贡献指南
+
+欢迎提交 Issue 和 Pull Request！
+
+## 许可证
+
+MIT License
