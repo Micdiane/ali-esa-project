@@ -60,7 +60,12 @@ const currentTab = ref<'manager' | 'tester'>('manager');
     <!-- 应用底部 -->
     <footer class="app-footer">
       <p>多平台 AI API 管理工具 © {{ new Date().getFullYear() }}</p>
-      <p class="footer-subtitle">支持硅基流动、阿里云 DashScope、DeepSeek、Kimi 等平台</p>
+      <p class="footer-subtitle">
+        支持硅基流动、阿里云 DashScope、DeepSeek、Kimi 等平台
+      </p>
+      <p class="footer-security">
+        🔒 所有数据仅存储在您的浏览器本地，使用 AES-256 加密，不会上传到任何服务器
+      </p>
     </footer>
   </div>
 </template>
@@ -245,6 +250,14 @@ body {
 .footer-subtitle {
   opacity: 0.8;
   font-size: 0.85rem;
+}
+
+.footer-security {
+  opacity: 0.9;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 /* 响应式设计 */

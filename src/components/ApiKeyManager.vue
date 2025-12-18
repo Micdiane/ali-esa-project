@@ -2,6 +2,9 @@
   <div class="api-key-manager">
     <h2>API 密钥管理</h2>
 
+    <!-- 隐私声明 -->
+    <PrivacyNotice />
+
     <!-- 批量添加密钥区域 -->
     <div class="batch-add-section">
       <h3>批量添加密钥</h3>
@@ -136,6 +139,7 @@ import { apiKeyStorage } from '../utils/encryption';
 import { fetchModelsByPlatform, checkBalanceByPlatform } from '../utils/platformApis';
 import { PROVIDERS } from '../config/providers';
 import { toast } from '../utils/toast';
+import PrivacyNotice from './PrivacyNotice.vue';
 
 // 响应式数据
 const apiKeys = ref<ApiKey[]>([]);
