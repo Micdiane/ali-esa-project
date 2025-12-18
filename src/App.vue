@@ -1,20 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import ApiKeyManager from './components/ApiKeyManager.vue';
-import QuotaChecker from './components/QuotaChecker.vue';
-import ModelQuery from './components/ModelQuery.vue';
-import ModelAvailabilityChecker from './components/ModelAvailabilityChecker.vue';
+import ModelTester from './components/ModelTester.vue';
 
-// 选项卡状态
-const activeTab = ref('keys');
-
-// 选项卡配置
-const tabs = [
-  { id: 'keys', name: '密钥管理', icon: '🔑' },
-  { id: 'quota', name: '余额查询', icon: '💰' },
-  { id: 'models', name: '模型查询', icon: '🤖' },
-  { id: 'availability', name: '可用性检测', icon: '📊' }
-];
+const currentTab = ref<'manager' | 'tester'>('manager');
 </script>
 
 <template>
@@ -22,47 +11,42 @@ const tabs = [
     <!-- 应用头部 -->
     <header class="app-header">
       <div class="header-content">
-        <h1 class="app-title">API Key 管理平台</h1>
-        <p class="app-subtitle">集中管理多平台 API 密钥，查询余额与模型信息</p>
+        <h1 class="app-title">硅基流动 API 管理工具</h1>
+        <p class="app-subtitle">批量管理 API 密钥，查询余额与模型信息，测试对话功能</p>
       </div>
     </header>
-    
-    <!-- 导航选项卡 -->
+
+    <!-- 导航标签 -->
     <nav class="app-nav">
       <div class="nav-container">
-        <button 
-          v-for="tab in tabs" 
-          :key="tab.id" 
-          @click="activeTab = tab.id" 
+        <button
           class="nav-tab"
-          :class="{ active: activeTab === tab.id }"
+          :class="{ active: currentTab === 'manager' }"
+          @click="currentTab = 'manager'"
         >
-          <span class="tab-icon">{{ tab.icon }}</span>
-          <span class="tab-name">{{ tab.name }}</span>
+          密钥管理
+        </button>
+        <button
+          class="nav-tab"
+          :class="{ active: currentTab === 'tester' }"
+          @click="currentTab = 'tester'"
+        >
+          模型测试
         </button>
       </div>
     </nav>
-    
+
     <!-- 主内容区域 -->
     <main class="app-main">
       <div class="main-container">
-        <!-- 密钥管理 -->
-        <ApiKeyManager v-if="activeTab === 'keys'" />
-        
-        <!-- 余额/配额查询 -->
-        <QuotaChecker v-else-if="activeTab === 'quota'" />
-        
-        <!-- 模型查询 -->
-        <ModelQuery v-else-if="activeTab === 'models'" />
-        
-        <!-- 模型可用性检测 -->
-        <ModelAvailabilityChecker v-else-if="activeTab === 'availability'" />
+        <ApiKeyManager v-if="currentTab === 'manager'" />
+        <ModelTester v-if="currentTab === 'tester'" />
       </div>
     </main>
-    
+
     <!-- 应用底部 -->
     <footer class="app-footer">
-      <p>API Key 管理平台 © {{ new Date().getFullYear() }}</p>
+      <p>硅基流动 API 管理工具 © {{ new Date().getFullYear() }}</p>
     </footer>
   </div>
 </template>
@@ -92,127 +76,107 @@ body {
 
 /* 应用头部 */
 .app-header {
-  background: linear-gradient(135deg, #4285f4 0%, #3367d6 100%);
+  background: linear-gradient(135deg, #9333EA 0%, #7c2cc9 100%);
   color: white;
-  padding: 2rem 1rem;
+  padding: 2.5rem 1rem;
   text-align: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(147, 51, 234, 0.2);
+}
+
+/* 导航标签 */
+.app-nav {
+  background-color: white;
+  border-bottom: 2px solid #e5e7eb;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.nav-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  gap: 0;
+}
+
+.nav-tab {
+  padding: 1rem 2rem;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.nav-tab:hover {
+  color: #9333EA;
+  background-color: #f9fafb;
+}
+
+.nav-tab.active {
+  color: #9333EA;
+  border-bottom-color: #9333EA;
+  background-color: #f9fafb;
 }
 
 .header-content {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
 }
 
 .app-title {
-  font-size: 2rem;
+  font-size: 2.5rem;
   font-weight: bold;
   margin-bottom: 0.5rem;
 }
 
 .app-subtitle {
-  font-size: 1rem;
-  opacity: 0.9;
-}
-
-/* 导航栏 */
-.app-nav {
-  background-color: white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
-.nav-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  display: flex;
-  overflow-x: auto;
-  padding: 0 1rem;
-}
-
-.nav-tab {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 1rem 1.5rem;
-  background: none;
-  border: none;
-  font-size: 1rem;
-  color: #666;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-  border-bottom: 2px solid transparent;
-}
-
-.nav-tab:hover {
-  color: #4285f4;
-  background-color: rgba(66, 133, 244, 0.05);
-}
-
-.nav-tab.active {
-  color: #4285f4;
-  border-bottom-color: #4285f4;
-  background-color: rgba(66, 133, 244, 0.05);
-  font-weight: 500;
-}
-
-.tab-icon {
-  font-size: 1.2rem;
-}
-
-.tab-name {
-  font-size: 0.95rem;
+  font-size: 1.1rem;
+  opacity: 0.95;
 }
 
 /* 主内容区域 */
 .app-main {
   flex: 1;
-  padding: 1rem;
+  padding: 2rem 1rem;
 }
 
 .main-container {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background-color: #f9fafb;
+  border-radius: 12px;
   overflow: hidden;
 }
 
 /* 应用底部 */
 .app-footer {
   background-color: white;
-  padding: 1rem;
+  padding: 1.5rem;
   text-align: center;
   color: #666;
   font-size: 0.9rem;
-  border-top: 1px solid #eee;
+  border-top: 1px solid #e5e7eb;
   margin-top: auto;
 }
 
 /* 响应式设计 */
 @media (max-width: 768px) {
   .app-title {
-    font-size: 1.5rem;
+    font-size: 1.8rem;
   }
-  
+
   .app-subtitle {
-    font-size: 0.9rem;
+    font-size: 0.95rem;
   }
-  
-  .nav-tab {
-    padding: 0.8rem 1rem;
-  }
-  
-  .tab-name {
-    font-size: 0.85rem;
-  }
-  
+
   .app-main {
-    padding: 0.5rem;
+    padding: 1rem 0.5rem;
+  }
+
+  .app-header {
+    padding: 2rem 1rem;
   }
 }
 </style>

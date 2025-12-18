@@ -1,201 +1,155 @@
 <template>
   <div class="api-key-manager">
     <h2>API 密钥管理</h2>
-    
-    <!-- 添加密钥按钮 -->
-    <div class="add-key-section">
-      <button @click="showAddForm = true" class="add-btn">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-        添加密钥
-      </button>
-    </div>
-    
-    <!-- 密钥列表 -->
-    <div class="keys-grid">
-      <div 
-        v-for="key in apiKeys" 
-        :key="key.id" 
-        class="key-card"
-        :style="{ borderLeftColor: platformConfig[key.platform]?.color || '#ccc' }"
-      >
-        <div class="key-header">
-          <div class="key-info">
-            <h3>{{ platformConfig[key.platform]?.name }}</h3>
-            <p class="key-name">{{ key.name }}</p>
-          </div>
-          <div class="key-actions">
-            <button @click="editKey(key)" class="action-btn edit-btn">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-              </svg>
-            </button>
-            <button @click="deleteKey(key.id)" class="action-btn delete-btn">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                <line x1="10" y1="11" x2="10" y2="17"></line>
-                <line x1="14" y1="11" x2="14" y2="17"></line>
-              </svg>
-            </button>
-          </div>
+
+    <!-- 批量添加密钥区域 -->
+    <div class="batch-add-section">
+      <h3>批量添加密钥</h3>
+      <div class="batch-input-container">
+        <!-- 平台选择 -->
+        <div class="platform-selector">
+          <label for="platform">选择平台:</label>
+          <select id="platform" v-model="selectedPlatform" class="platform-select">
+            <option value="siliconflow">💧 硅基流动</option>
+            <option value="dashscope">☁️ 阿里云 DashScope</option>
+            <option value="deepseek">🧠 DeepSeek</option>
+            <option value="kimi">🌙 Kimi (月之暗面)</option>
+          </select>
         </div>
-        
-        <div class="key-details">
-          <div class="key-value">
-            <span class="label">密钥:</span>
-            <span class="value">{{ maskKey(key.key) }}</span>
-          </div>
-          <div v-if="key.secret" class="key-value">
-            <span class="label">密钥Secret:</span>
-            <span class="value">{{ maskKey(key.secret) }}</span>
-          </div>
-          <div class="key-tags">
-            <span class="label">标签:</span>
-            <div class="tags-container">
-              <span 
-                v-for="tag in key.tags" 
-                :key="tag" 
-                class="tag"
-              >
-                {{ tag }}
-              </span>
-              <span v-if="key.tags.length === 0" class="no-tags">无标签</span>
-            </div>
-          </div>
-        </div>
-        
-        <div class="key-meta">
-          <span class="meta-item">创建于: {{ formatDate(key.createdAt) }}</span>
-          <span class="meta-item">更新于: {{ formatDate(key.updatedAt) }}</span>
-        </div>
-      </div>
-      
-      <!-- 空状态 -->
-      <div v-if="apiKeys.length === 0" class="empty-state">
-        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="empty-icon">
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-          <line x1="16" y1="2" x2="16" y2="6"></line>
-          <line x1="8" y1="2" x2="8" y2="6"></line>
-          <line x1="3" y1="10" x2="21" y2="10"></line>
-        </svg>
-        <p>暂无API密钥</p>
-        <button @click="showAddForm = true" class="add-btn">添加第一个密钥</button>
-      </div>
-    </div>
-    
-    <!-- 密钥表单模态框 -->
-    <div v-if="showAddForm || editingKey" class="modal-overlay" @click="closeForm">
-      <div class="modal-content" @click.stop>
-        <div class="modal-header">
-          <h3>{{ editingKey ? '编辑密钥' : '添加API密钥' }}</h3>
-          <button @click="closeForm" class="close-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
+
+        <textarea
+          v-model="batchKeysInput"
+          placeholder="请输入API密钥，每行一个&#10;例如：&#10;sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx&#10;sk-yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          class="batch-textarea"
+          rows="6"
+        ></textarea>
+        <div class="batch-actions">
+          <button @click="addBatchKeys" class="batch-add-btn" :disabled="!batchKeysInput.trim()">
+            批量添加到 {{ PROVIDERS[selectedPlatform]?.name }}
+          </button>
+          <button @click="queryAllKeys" class="query-btn" :disabled="apiKeys.length === 0 || isQuerying">
+            <svg v-if="isQuerying" class="loading-spinner" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
             </svg>
+            {{ isQuerying ? '查询中...' : '查询所有密钥信息' }}
           </button>
         </div>
-        <div class="modal-body">
-          <form @submit.prevent="saveKey">
-            <div class="form-group">
-              <label for="platform">平台</label>
-              <select 
-                id="platform" 
-                v-model="form.platform" 
-                required
-                class="form-control"
-              >
-                <option value="">选择平台</option>
-                <option 
-                  v-for="(config, platform) in PROVIDERS" 
-                  :key="platform" 
-                  :value="platform"
-                >
-                  {{ config.name }}
-                </option>
-              </select>
-            </div>
-            
-            <div class="form-group">
-              <label for="name">名称</label>
-              <input 
-                type="text" 
-                id="name" 
-                v-model="form.name" 
-                required
-                placeholder="给密钥起个名字"
-                class="form-control"
-              >
-            </div>
-            
-            <div class="form-group">
-              <label for="key">API Key</label>
-              <input 
-                type="text" 
-                id="key" 
-                v-model="form.key" 
-                required
-                placeholder="输入API密钥"
-                class="form-control"
-              >
-            </div>
-            
-            <div class="form-group">
-              <label for="secret">API Secret (可选)</label>
-              <input 
-                type="text" 
-                id="secret" 
-                v-model="form.secret"
-                placeholder="输入API密钥Secret（如适用）"
-                class="form-control"
-              >
-            </div>
-            
-            <div class="form-group">
-              <label for="tags">标签 (用逗号分隔)</label>
-              <input 
-                type="text" 
-                id="tags" 
-                v-model="form.tagsInput"
-                placeholder="如：工作用,测试用"
-                class="form-control"
-              >
-            </div>
-            
-            <div class="form-actions">
-              <button type="button" @click="closeForm" class="cancel-btn">取消</button>
-              <button type="submit" class="save-btn">保存</button>
-            </div>
-          </form>
+      </div>
+    </div>
+
+    <!-- 模型列表区域 -->
+    <div class="models-section" v-if="models.length > 0">
+      <h3>支持的模型列表 ({{ models.length }})</h3>
+      <div class="models-container">
+        <div class="model-item" v-for="model in models" :key="model">
+          {{ model }}
         </div>
       </div>
+    </div>
+
+    <!-- 密钥列表 -->
+    <div class="keys-section" v-if="apiKeys.length > 0">
+      <h3>密钥列表 ({{ apiKeys.length }})</h3>
+
+      <!-- 平台过滤 -->
+      <div class="filter-section">
+        <label>筛选平台:</label>
+        <select v-model="filterPlatform" class="filter-select">
+          <option value="">全部平台</option>
+          <option value="siliconflow">💧 硅基流动</option>
+          <option value="dashscope">☁️ 阿里云 DashScope</option>
+          <option value="deepseek">🧠 DeepSeek</option>
+          <option value="kimi">🌙 Kimi</option>
+        </select>
+      </div>
+
+      <div class="keys-grid">
+        <div
+          v-for="key in filteredKeys"
+          :key="key.id"
+          class="key-card"
+          :style="{ borderLeftColor: getPlatformColor(key.platform) }"
+        >
+          <div class="key-header">
+            <div class="key-info">
+              <h4>{{ getPlatformName(key.platform) }}</h4>
+            </div>
+            <div class="key-actions">
+              <button @click="deleteKey(key.id)" class="action-btn delete-btn" title="删除">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  <line x1="10" y1="11" x2="10" y2="17"></line>
+                  <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="key-details">
+            <div class="key-row">
+              <span class="label">密钥:</span>
+              <span class="value key-value-wrapper" @click="copyToClipboard(key.key)" title="点击复制">
+                <span class="key-text">{{ key.key }}</span>
+                <svg class="copy-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              </span>
+            </div>
+            <div class="key-row">
+              <span class="label">状态:</span>
+              <span class="status" :class="getKeyStatusClass(key)">{{ getKeyStatusText(key) }}</span>
+            </div>
+            <div class="key-row" v-if="key.balanceInfo">
+              <span class="label">余额:</span>
+              <span class="value">{{ formatBalance(key) }}</span>
+            </div>
+            <div class="key-row" v-if="key.userId">
+              <span class="label">用户ID:</span>
+              <span class="value">{{ key.userId }}</span>
+            </div>
+            <div class="key-row">
+              <span class="label">ID:</span>
+              <span class="value">{{ key.id }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 空状态 -->
+    <div v-if="apiKeys.length === 0" class="empty-state">
+      <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="empty-icon">
+        <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
+      </svg>
+      <p>暂无API密钥</p>
+      <p class="hint">请选择平台并在上方输入框中粘贴您的API密钥（每行一个），然后点击"批量添加"</p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { type ApiKey } from '../types';
+import { ref, onMounted, computed } from 'vue';
+import { type ApiKey, type Platform } from '../types';
 import { apiKeyStorage } from '../utils/encryption';
-import { platformConfig } from '../config/platforms';
+import { fetchModelsByPlatform, checkBalanceByPlatform } from '../utils/platformApis';
 import { PROVIDERS } from '../config/providers';
 
 // 响应式数据
 const apiKeys = ref<ApiKey[]>([]);
-const showAddForm = ref(false);
-const editingKey = ref<ApiKey | null>(null);
+const batchKeysInput = ref('');
+const isQuerying = ref(false);
+const models = ref<string[]>([]);
+const selectedPlatform = ref<Platform>('siliconflow');
+const filterPlatform = ref<string>('');
 
-// 表单数据
-const form = ref({
-  platform: '' as string,
-  name: '',
-  key: '',
-  secret: '',
-  tagsInput: ''
+// 过滤后的密钥列表
+const filteredKeys = computed(() => {
+  if (!filterPlatform.value) {
+    return apiKeys.value;
+  }
+  return apiKeys.value.filter(key => key.platform === filterPlatform.value);
 });
 
 // 加载密钥列表
@@ -203,64 +157,136 @@ const loadKeys = () => {
   apiKeys.value = apiKeyStorage.getAll();
 };
 
-// 打开编辑表单
-const editKey = (key: ApiKey) => {
-  editingKey.value = key;
-  form.value = {
-    platform: key.platform,
-    name: key.name,
-    key: key.key,
-    secret: key.secret || '',
-    tagsInput: key.tags.join(', ')
-  };
-  showAddForm.value = true;
-};
+// 批量添加密钥
+const addBatchKeys = () => {
+  const keys = batchKeysInput.value
+    .split('\n')
+    .map(k => k.trim())
+    .filter(k => k.length > 0);
 
-// 关闭表单
-const closeForm = () => {
-  showAddForm.value = false;
-  editingKey.value = null;
-  resetForm();
-};
+  if (keys.length === 0) {
+    alert('请输入至少一个密钥');
+    return;
+  }
 
-// 重置表单
-const resetForm = () => {
-  form.value = {
-    platform: '',
-    name: '',
-    key: '',
-    secret: '',
-    tagsInput: ''
-  };
-};
+  let addedCount = 0;
+  keys.forEach(key => {
+    // 检查是否已经存在
+    const exists = apiKeys.value.some(k => k.key === key);
+    if (!exists) {
+      const keyData: ApiKey = {
+        id: crypto.randomUUID(),
+        platform: selectedPlatform.value,
+        name: `Key-${Date.now()}-${addedCount}`,
+        key: key,
+        tags: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        status: 'unknown'
+      };
+      apiKeyStorage.save(keyData);
+      addedCount++;
+    }
+  });
 
-// 保存密钥
-const saveKey = () => {
-  // 处理标签输入
-  const tags = form.value.tagsInput
-    .split(',')
-    .map(tag => tag.trim())
-    .filter(tag => tag.length > 0);
-  
-  const keyData: ApiKey = {
-    id: editingKey.value?.id || crypto.randomUUID(),
-    platform: form.value.platform as any, // 类型断言，确保类型检查通过
-    name: form.value.name,
-    key: form.value.key,
-    secret: form.value.secret || undefined,
-    tags,
-    createdAt: editingKey.value?.createdAt || new Date(),
-    updatedAt: new Date()
-  };
-  
-  // 保存到存储
-  apiKeyStorage.save(keyData);
-  
-  // 更新列表
+  // 清空输入框
+  batchKeysInput.value = '';
+
+  // 重新加载列表
   loadKeys();
-  
-  // 关闭表单
-  closeForm();
+
+  alert(`成功添加 ${addedCount} 个密钥到 ${PROVIDERS[selectedPlatform.value]?.name}`);
+};
+
+// 查询所有密钥信息
+const queryAllKeys = async () => {
+  if (apiKeys.value.length === 0) {
+    return;
+  }
+
+  isQuerying.value = true;
+
+  try {
+    // 按平台分组查询模型列表
+    const platformsToQuery = [...new Set(apiKeys.value.map(k => k.platform))];
+
+    for (const platform of platformsToQuery) {
+      const platformKeys = apiKeys.value.filter(k => k.platform === platform);
+      if (platformKeys.length > 0) {
+        try {
+          const modelList = await fetchModelsByPlatform(platform, platformKeys[0].key);
+          // 只显示第一个平台的模型列表
+          if (models.value.length === 0) {
+            models.value = modelList.map((m: any) => m.id || m);
+          }
+        } catch (error) {
+          console.error(`获取 ${platform} 模型列表失败:`, error);
+        }
+      }
+    }
+
+    // 并行查询所有密钥
+    const queryPromises = apiKeys.value.map(async (key) => {
+      try {
+        const balanceInfo = await checkBalanceByPlatform(key.platform, key.key);
+
+        // 处理不同平台的响应格式
+        let status: 'valid' | 'invalid' | 'unknown' = 'valid';
+        let userId: string | undefined;
+
+        // 根据平台解析余额信息
+        if (key.platform === 'dashscope') {
+          // Dashscope 不支持余额查询
+          status = 'unknown';
+        } else if (key.platform === 'deepseek') {
+          status = balanceInfo.is_available ? 'valid' : 'invalid';
+        } else if (key.platform === 'siliconflow') {
+          userId = balanceInfo.user_id;
+        } else if (key.platform === 'kimi') {
+          status = balanceInfo.data ? 'valid' : 'invalid';
+        }
+
+        // 更新密钥信息
+        const updatedKey: ApiKey = {
+          ...key,
+          status,
+          balanceInfo: balanceInfo,
+          userId: userId || key.userId,
+          updatedAt: new Date()
+        };
+
+        // 保存到存储
+        apiKeyStorage.save(updatedKey);
+
+        return updatedKey;
+      } catch (error) {
+        console.error(`查询密钥 ${key.id} 失败:`, error);
+
+        // 标记为无效
+        const updatedKey: ApiKey = {
+          ...key,
+          status: 'invalid',
+          updatedAt: new Date()
+        };
+
+        apiKeyStorage.save(updatedKey);
+
+        return updatedKey;
+      }
+    });
+
+    await Promise.all(queryPromises);
+
+    // 重新加载列表
+    loadKeys();
+
+    alert('查询完成！');
+  } catch (error) {
+    console.error('查询失败:', error);
+    alert('查询失败，请检查网络连接');
+  } finally {
+    isQuerying.value = false;
+  }
 };
 
 // 删除密钥
@@ -271,17 +297,82 @@ const deleteKey = (id: string) => {
   }
 };
 
-// 格式化日期
-const formatDate = (date: Date) => {
-  return new Date(date).toLocaleString('zh-CN');
+// 复制到剪贴板
+const copyToClipboard = async (text: string) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    alert('已复制到剪贴板');
+  } catch (error) {
+    console.error('复制失败:', error);
+    // 备用方案
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    alert('已复制到剪贴板');
+  }
 };
 
-// 掩码显示密钥
-const maskKey = (key: string) => {
-  if (key.length <= 8) {
-    return key;
+// 获取平台名称
+const getPlatformName = (platform: Platform) => {
+  return PROVIDERS[platform]?.name || platform;
+};
+
+// 获取平台颜色
+const getPlatformColor = (platform: Platform) => {
+  return PROVIDERS[platform]?.color || '#9333EA';
+};
+
+// 获取密钥状态样式类
+const getKeyStatusClass = (key: ApiKey) => {
+  if (key.status === 'valid') return 'status-valid';
+  if (key.status === 'invalid') return 'status-invalid';
+  return 'status-unknown';
+};
+
+// 获取密钥状态文本
+const getKeyStatusText = (key: ApiKey) => {
+  if (key.status === 'valid') return '有效';
+  if (key.status === 'invalid') return '无效';
+  return '未知';
+};
+
+// 格式化余额
+const formatBalance = (key: ApiKey) => {
+  if (!key.balanceInfo) return '未查询';
+
+  const info = key.balanceInfo;
+
+  // 根据平台格式化余额
+  switch (key.platform) {
+    case 'siliconflow':
+      return `¥${(info.total_balance || 0).toFixed(2)}`;
+
+    case 'dashscope':
+      return info.message || '请访问控制台查看';
+
+    case 'deepseek':
+      if (info.balance_infos && info.balance_infos.length > 0) {
+        const cnyInfo = info.balance_infos.find((b: any) => b.currency === 'CNY');
+        if (cnyInfo) {
+          return `¥${cnyInfo.total_balance}`;
+        }
+      }
+      return '¥0.00';
+
+    case 'kimi':
+      if (info.data) {
+        return `¥${(info.data.available_balance || 0).toFixed(2)}`;
+      }
+      return '¥0.00';
+
+    default:
+      return '未知';
   }
-  return key.substring(0, 4) + '***' + key.substring(key.length - 4);
 };
 
 // 组件挂载时加载密钥
@@ -292,77 +383,251 @@ onMounted(() => {
 
 <style scoped>
 .api-key-manager {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 20px;
 }
 
 h2 {
-  font-size: 24px;
-  margin-bottom: 20px;
+  font-size: 28px;
+  margin-bottom: 30px;
   color: #333;
+  font-weight: 600;
 }
 
-.add-key-section {
-  margin-bottom: 20px;
+h3 {
+  font-size: 18px;
+  margin-bottom: 15px;
+  color: #555;
+  font-weight: 500;
 }
 
-.add-btn {
+/* 批量添加区域 */
+.batch-add-section {
+  margin-bottom: 30px;
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.batch-input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.platform-selector {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.platform-selector label {
+  font-weight: 500;
+  color: #333;
+  min-width: 80px;
+}
+
+.platform-select {
+  flex: 1;
+  max-width: 300px;
+  padding: 10px 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.3s;
+}
+
+.platform-select:focus {
+  outline: none;
+  border-color: #9333EA;
+}
+
+.batch-textarea {
+  width: 100%;
+  padding: 15px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: 'Courier New', Courier, monospace;
+  resize: vertical;
+  min-height: 120px;
+  transition: border-color 0.3s;
+  box-sizing: border-box;
+}
+
+.batch-textarea:focus {
+  outline: none;
+  border-color: #9333EA;
+}
+
+.batch-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.batch-add-btn, .query-btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 20px;
-  background-color: #4285f4;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 16px;
-  cursor: pointer;
-  transition: background-color 0.3s;
 }
 
-.add-btn:hover {
-  background-color: #3367d6;
+.batch-add-btn {
+  background-color: #9333EA;
+  color: white;
+}
+
+.batch-add-btn:hover:not(:disabled) {
+  background-color: #7c2cc9;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(147, 51, 234, 0.3);
+}
+
+.batch-add-btn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.query-btn {
+  background-color: #10b981;
+  color: white;
+}
+
+.query-btn:hover:not(:disabled) {
+  background-color: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.query-btn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 模型列表区域 */
+.models-section {
+  margin-bottom: 30px;
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.models-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 10px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 10px;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.model-item {
+  padding: 10px 15px;
+  background: white;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: 'Courier New', Courier, monospace;
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s;
+}
+
+.model-item:hover {
+  border-color: #9333EA;
+  box-shadow: 0 2px 6px rgba(147, 51, 234, 0.15);
+}
+
+/* 密钥列表区域 */
+.keys-section {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.filter-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.filter-section label {
+  font-weight: 500;
+  color: #333;
+}
+
+.filter-select {
+  padding: 8px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 14px;
+  min-width: 200px;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: #9333EA;
 }
 
 .keys-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
   gap: 20px;
-  margin-top: 20px;
 }
 
 .key-card {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: #f9fafb;
+  border-radius: 10px;
   padding: 20px;
-  border-left: 4px solid #ccc;
-  transition: transform 0.2s, box-shadow 0.2s;
+  border-left: 4px solid #9333EA;
+  transition: all 0.3s;
 }
 
 .key-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
 }
 
 .key-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   margin-bottom: 15px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
 }
 
-.key-info h3 {
-  font-size: 18px;
-  margin: 0 0 5px 0;
-  color: #333;
-}
-
-.key-name {
-  font-size: 14px;
-  color: #666;
+.key-info h4 {
   margin: 0;
+  font-size: 16px;
+  color: #333;
+  font-weight: 600;
 }
 
 .key-actions {
@@ -374,223 +639,126 @@ h2 {
   background: none;
   border: none;
   cursor: pointer;
-  padding: 6px;
-  border-radius: 4px;
-  transition: background-color 0.2s;
+  padding: 8px;
+  border-radius: 6px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .action-btn:hover {
-  background-color: #f0f0f0;
-}
-
-.edit-btn svg {
-  color: #4285f4;
+  background-color: #fee;
 }
 
 .delete-btn svg {
-  color: #ea4335;
+  color: #ef4444;
 }
 
 .key-details {
-  margin-bottom: 15px;
-}
-
-.key-value {
   display: flex;
   flex-direction: column;
-  margin-bottom: 10px;
+  gap: 12px;
+}
+
+.key-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
 }
 
 .label {
-  font-size: 12px;
-  color: #666;
-  margin-bottom: 4px;
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+  min-width: 70px;
 }
 
 .value {
   font-family: 'Courier New', Courier, monospace;
-  font-size: 14px;
-  background-color: #f5f5f5;
-  padding: 6px 10px;
-  border-radius: 4px;
+  font-size: 13px;
+  color: #1f2937;
+  font-weight: 500;
   word-break: break-all;
+  flex: 1;
+  text-align: right;
 }
 
-.key-tags {
-  margin-top: 10px;
-}
-
-.tags-container {
+.key-value-wrapper {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
-  margin-top: 4px;
+  cursor: pointer;
+  padding: 8px 12px;
+  background: white;
+  border-radius: 6px;
+  transition: all 0.2s;
+  border: 1px solid #e5e7eb;
 }
 
-.tag {
-  background-color: #e8f0fe;
-  color: #4285f4;
-  padding: 4px 10px;
+.key-value-wrapper:hover {
+  border-color: #9333EA;
+  background: #faf5ff;
+}
+
+.key-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.copy-icon {
+  flex-shrink: 0;
+  color: #9333EA;
+}
+
+.status {
+  padding: 4px 12px;
   border-radius: 12px;
   font-size: 12px;
+  font-weight: 600;
 }
 
-.no-tags {
-  color: #999;
-  font-size: 12px;
-  font-style: italic;
+.status-valid {
+  background-color: #d1fae5;
+  color: #065f46;
 }
 
-.key-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 15px;
-  padding-top: 15px;
-  border-top: 1px solid #eee;
+.status-invalid {
+  background-color: #fee2e2;
+  color: #991b1b;
 }
 
-.meta-item {
-  font-size: 12px;
-  color: #999;
+.status-unknown {
+  background-color: #e5e7eb;
+  color: #4b5563;
 }
 
+/* 空状态 */
 .empty-state {
-  grid-column: 1 / -1;
   text-align: center;
-  padding: 60px 20px;
+  padding: 80px 20px;
   background-color: #fafafa;
-  border-radius: 8px;
+  border-radius: 12px;
   border: 2px dashed #e0e0e0;
 }
 
 .empty-icon {
   color: #999;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .empty-state p {
   color: #666;
-  margin-bottom: 20px;
+  margin: 10px 0;
   font-size: 16px;
 }
 
-/* 模态框样式 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  width: 90%;
-  max-width: 500px;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px;
-  border-bottom: 1px solid #eee;
-}
-
-.modal-header h3 {
-  margin: 0;
-  font-size: 20px;
-  color: #333;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-}
-
-.close-btn:hover {
-  background-color: #f0f0f0;
-}
-
-.modal-body {
-  padding: 20px;
-}
-
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 8px;
+.empty-state .hint {
+  color: #999;
   font-size: 14px;
-  color: #333;
-  font-weight: 500;
-}
-
-.form-control {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-  transition: border-color 0.3s;
-  box-sizing: border-box;
-}
-
-.form-control:focus {
-  outline: none;
-  border-color: #4285f4;
-  box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 24px;
-}
-
-.cancel-btn {
-  padding: 10px 20px;
-  background-color: #f0f0f0;
-  color: #333;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.cancel-btn:hover {
-  background-color: #e0e0e0;
-}
-
-.save-btn {
-  padding: 10px 20px;
-  background-color: #4285f4;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.save-btn:hover {
-  background-color: #3367d6;
 }
 
 /* 响应式设计 */
@@ -598,9 +766,39 @@ h2 {
   .keys-grid {
     grid-template-columns: 1fr;
   }
-  
+
+  .models-container {
+    grid-template-columns: 1fr;
+  }
+
   .api-key-manager {
     padding: 10px;
+  }
+
+  .batch-actions {
+    flex-direction: column;
+  }
+
+  .batch-add-btn, .query-btn {
+    width: 100%;
+  }
+
+  .platform-selector {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .platform-select {
+    max-width: none;
+  }
+
+  .filter-section {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-select {
+    min-width: auto;
   }
 }
 </style>

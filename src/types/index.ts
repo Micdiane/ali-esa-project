@@ -1,10 +1,9 @@
 // 平台类型定义
 export const Platform = {
-  BAIDU_QIANFAN: 'baidu_qianfan',
-  TONGYI_QIANWEN: 'tongyi_qianwen',
-  ZHIPU_GLM: 'zhipu_glm',
-  DOUBAO: 'doubao',
-  SILICONFLOW: 'siliconflow'
+  SILICONFLOW: 'siliconflow',
+  DASHSCOPE: 'dashscope',
+  DEEPSEEK: 'deepseek',
+  KIMI: 'kimi'
 } as const;
 
 export type Platform = typeof Platform[keyof typeof Platform];
@@ -19,6 +18,10 @@ export interface ApiKey {
   tags: string[];
   createdAt: Date;
   updatedAt: Date;
+  status?: 'valid' | 'invalid' | 'unknown';
+  balance?: number;
+  balanceInfo?: any; // 存储完整的余额信息响应
+  userId?: string;
 }
 
 // 余额/配额信息类型
@@ -26,7 +29,6 @@ export interface QuotaInfo {
   platform: Platform;
   remainingTokens: number;
   usedRatio: number;
-  resetTime: string;
   lastChecked: Date;
 }
 
