@@ -139,6 +139,8 @@ export const checkBalance = async (providerId: string, token: string, baseUrl?: 
         return await checkZhipuGLMBalance(token, baseUrl);
       case 'doubao':
         return await checkDoubaoBalance(token, baseUrl, secret);
+      case 'siliconflow':
+        return await checkSiliconFlowBalance(token, baseUrl);
       default:
         throw new Error(`尚未实现 ${provider.name} 的余额查询`);
     }
@@ -525,6 +527,53 @@ async function checkDoubaoBalance(token: string, _baseUrl?: string, secret?: str
       used_tokens: used || 0,
       used_ratio: total > 0 ? used / total : 0,
       reset_time: '每月 1 日'
+    };
+  }
+
+  throw new Error(data.message || '查询失败');
+}
+
+// 硅基流动余额查询
+async function checkSiliconFlowBalance(token: string, _baseUrl?: string) {
+  // 硅基流动余额查询接口 - 使用真实API，Bearer Token认证
+  const apiUrl = `https://api.siliconflow.cn/v1/account/balance`;
+  const response = await proxiedFetch(apiUrl, {
+    method: 'GET',
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json"
+    }
+  });
+  const data = await response.json();
+
+  // 解析真实API响应格式
+  if (data.code === 200 && data.data) {
+    const {
+      total_balance,
+      used_balance,
+      remaining_balance,
+      free_quota,
+      used_free_quota,
+      remaining_free_quota
+    } = data.data;
+
+    // 优先使用免费Token配额，如果没有则使用余额信息
+    const totalTokens = free_quota || (total_balance * 1000) || 0; // 余额转换为Token估算值
+    const usedTokens = used_free_quota || (used_balance * 1000) || 0;
+    const remainingTokens = remaining_free_quota || (remaining_balance * 1000) || 0;
+
+    return {
+      remaining_tokens: remainingTokens,
+      total_tokens: totalTokens,
+      used_tokens: usedTokens,
+      used_ratio: totalTokens > 0 ? usedTokens / totalTokens : 0,
+      reset_time: '每月 1 日',
+      // 额外信息
+      balance_info: {
+        total_balance,
+        used_balance,
+        remaining_balance
+      }
     };
   }
 

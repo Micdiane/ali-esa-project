@@ -25,6 +25,12 @@ export const platformConfig = {
     quotaApi: '',
     modelApi: '',
     color: '#45B7D1'
+  },
+  [Platform.SILICONFLOW]: {
+    name: '硅基流动',
+    quotaApi: 'https://api.siliconflow.cn/v1/account/balance',
+    modelApi: '',
+    color: '#9333EA'
   }
 };
 
@@ -105,6 +111,26 @@ export const builtinModels: ModelInfo[] = [
     name: '豆包 Lite 128K',
     platform: Platform.DOUBAO,
     contextWindow: 131072,
+    qpsLimit: 10,
+    features: ['文本生成'],
+    isFree: true
+  },
+
+  // 硅基流动模型
+  {
+    id: 'deepseek-chat',
+    name: 'DeepSeek Chat',
+    platform: Platform.SILICONFLOW,
+    contextWindow: 32768,
+    qpsLimit: 10,
+    features: ['文本生成'],
+    isFree: true
+  },
+  {
+    id: 'qwen-2.5-72b-chat',
+    name: 'Qwen 2.5 72B Chat',
+    platform: Platform.SILICONFLOW,
+    contextWindow: 32768,
     qpsLimit: 10,
     features: ['文本生成'],
     isFree: true

@@ -85,5 +85,17 @@ export const PROVIDERS: Record<string, ProviderConfig> = {
     defaultTestModel: 'claude-3-haiku-20240307',
     hasBalanceCheck: true,
     color: '#FF6B6B'
+  },
+
+  // 硅基流动
+  siliconflow: {
+    id: 'siliconflow',
+    name: '硅基流动',
+    icon: '⚡',
+    defaultBase: 'https://api.siliconflow.cn/v1',
+    defaultModel: 'deepseek-chat',
+    defaultTestModel: 'deepseek-chat',
+    hasBalanceCheck: true,
+    color: '#9333EA'
   }
 };

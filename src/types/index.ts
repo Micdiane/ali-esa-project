@@ -3,7 +3,8 @@ export const Platform = {
   BAIDU_QIANFAN: 'baidu_qianfan',
   TONGYI_QIANWEN: 'tongyi_qianwen',
   ZHIPU_GLM: 'zhipu_glm',
-  DOUBAO: 'doubao'
+  DOUBAO: 'doubao',
+  SILICONFLOW: 'siliconflow'
 } as const;
 
 export type Platform = typeof Platform[keyof typeof Platform];
