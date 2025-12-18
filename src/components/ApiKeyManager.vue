@@ -135,6 +135,7 @@ import { type ApiKey, type Platform } from '../types';
 import { apiKeyStorage } from '../utils/encryption';
 import { fetchModelsByPlatform, checkBalanceByPlatform } from '../utils/platformApis';
 import { PROVIDERS } from '../config/providers';
+import { toast } from '../utils/toast';
 
 // 响应式数据
 const apiKeys = ref<ApiKey[]>([]);
@@ -165,11 +166,12 @@ const addBatchKeys = () => {
     .filter(k => k.length > 0);
 
   if (keys.length === 0) {
-    alert('请输入至少一个密钥');
+    toast.warning('请输入至少一个密钥');
     return;
   }
 
   let addedCount = 0;
+  let duplicateCount = 0;
   keys.forEach(key => {
     // 检查是否已经存在
     const exists = apiKeys.value.some(k => k.key === key);
@@ -186,6 +188,8 @@ const addBatchKeys = () => {
       };
       apiKeyStorage.save(keyData);
       addedCount++;
+    } else {
+      duplicateCount++;
     }
   });
 
@@ -195,7 +199,15 @@ const addBatchKeys = () => {
   // 重新加载列表
   loadKeys();
 
-  alert(`成功添加 ${addedCount} 个密钥到 ${PROVIDERS[selectedPlatform.value]?.name}`);
+  const platformName = PROVIDERS[selectedPlatform.value]?.name;
+  if (addedCount > 0) {
+    const message = duplicateCount > 0
+      ? `成功添加 ${addedCount} 个密钥，${duplicateCount} 个重复已跳过`
+      : `成功添加 ${addedCount} 个密钥`;
+    toast.success(message, `已添加到 ${platformName}`);
+  } else {
+    toast.info('所有密钥均已存在', '未添加新密钥');
+  }
 };
 
 // 查询所有密钥信息
@@ -280,10 +292,12 @@ const queryAllKeys = async () => {
     // 重新加载列表
     loadKeys();
 
-    alert('查询完成！');
+    const validCount = apiKeys.value.filter(k => k.status === 'valid').length;
+    const invalidCount = apiKeys.value.filter(k => k.status === 'invalid').length;
+    toast.success(`查询完成！有效: ${validCount}，无效: ${invalidCount}`, '密钥信息已更新');
   } catch (error) {
     console.error('查询失败:', error);
-    alert('查询失败，请检查网络连接');
+    toast.error('查询失败，请检查网络连接');
   } finally {
     isQuerying.value = false;
   }
@@ -291,9 +305,10 @@ const queryAllKeys = async () => {
 
 // 删除密钥
 const deleteKey = (id: string) => {
-  if (confirm('确定要删除这个密钥吗？')) {
+  if (confirm('确定要删除这个密钥吗？此操作无法撤销。')) {
     apiKeyStorage.delete(id);
     loadKeys();
+    toast.success('密钥已删除');
   }
 };
 
@@ -301,19 +316,23 @@ const deleteKey = (id: string) => {
 const copyToClipboard = async (text: string) => {
   try {
     await navigator.clipboard.writeText(text);
-    alert('已复制到剪贴板');
+    toast.success('密钥已复制到剪贴板');
   } catch (error) {
     console.error('复制失败:', error);
     // 备用方案
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.style.position = 'fixed';
-    textarea.style.opacity = '0';
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand('copy');
-    document.body.removeChild(textarea);
-    alert('已复制到剪贴板');
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      toast.success('密钥已复制到剪贴板');
+    } catch (e) {
+      toast.error('复制失败，请手动复制');
+    }
   }
 };
 
