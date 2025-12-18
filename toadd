@@ -1,0 +1,280 @@
+针对集成网站的开发需求，以下为你整理了**百度千帆、通义千问、智谱GLM、字节豆包**四家平台**通过curl命令查询API Key使用情况**的具体方式，包含直接可执行的curl命令（含签名计算的Shell脚本版），只需替换对应的密钥/API Key即可使用。
+
+### 核心说明
+各平台的查询方式差异主要在于**认证机制**：
+- 智谱GLM、通义千问：采用简单的`Bearer Token`认证，curl命令直接构造即可。
+- 百度千帆、字节豆包：采用**签名认证**（需计算时间戳、签名串），需结合Shell脚本自动计算签名。
+
+---
+
+## 一、智谱GLM（最简单，Bearer Token认证）
+### 1. 接口信息
+- **查询接口**：`https://open.bigmodel.cn/api/paas/v4/account/quota`
+- **请求方法**：GET
+- **认证方式**：请求头添加`Authorization: Bearer {你的API Key}`
+
+### 2. curl命令
+```bash
+# 替换为你的智谱GLM API Key
+API_KEY="your_zhipu_api_key"
+
+# 执行查询
+curl -X GET \
+  -H "Authorization: Bearer ${API_KEY}" \
+  -H "Content-Type: application/json" \
+  "https://open.bigmodel.cn/api/paas/v4/account/quota"
+```
+
+### 3. 返回结果示例（关键字段）
+```json
+{
+  "code": 200,
+  "data": {
+    "quota": 300000,    // 总配额（tokens）
+    "used": 12345,      // 已使用量
+    "remaining": 287655 // 剩余量
+  }
+}
+```
+
+### 4. 官方文档
+[智谱开放平台-账户配额查询](https://open.bigmodel.cn/dev/api#quota)
+
+---
+
+## 二、通义千问（DashScope，Bearer Token认证）
+### 1. 接口信息
+- **查询接口**：`https://dashscope.aliyuncs.com/api/v1/quotas`
+- **请求方法**：GET
+- **认证方式**：请求头添加`Authorization: Bearer {你的API Key}`
+- **可选参数**：`?model=qwen-turbo`（筛选指定模型的配额）
+
+### 2. curl命令
+```bash
+# 替换为你的通义千问API Key
+API_KEY="your_dashscope_api_key"
+
+# 执行查询（可添加?model=qwen-turbo筛选模型）
+curl -X GET \
+  -H "Authorization: Bearer ${API_KEY}" \
+  -H "Content-Type: application/json" \
+  "https://dashscope.aliyuncs.com/api/v1/quotas"
+```
+
+### 3. 返回结果示例（关键字段）
+```json
+{
+  "quotas": [
+    {
+      "model": "qwen-turbo",
+      "total": 1000000,  // 总配额（tokens/月）
+      "used": 56789,     // 已使用量
+      "remaining": 943211 // 剩余量
+    }
+  ]
+}
+```
+
+### 4. 官方文档
+[通义千问-配额查询API](https://help.aliyun.com/document_detail/2700764.html)
+
+---
+
+## 三、百度千帆（BCE-Auth-V1签名认证）
+百度千帆采用**百度智能云的BCE-Auth-V1签名机制**，需计算时间戳、签名串，这里提供**Shell脚本版curl命令**，自动完成签名计算。
+
+### 1. 接口信息
+- **查询接口**：`https://qianfan.baidubce.com/v2/resource/quota`（千帆资源配额查询）
+- **请求方法**：GET
+- **认证方式**：BCE-Auth-V1签名（需API Key + Secret Key）
+
+### 2. Shell脚本+curl命令
+```bash
+#!/bin/bash
+
+# 替换为你的百度千帆密钥
+API_KEY="your_qianfan_api_key"
+SECRET_KEY="your_qianfan_secret_key"
+
+# 固定参数
+HOST="qianfan.baidubce.com"
+PATH="/v2/resource/quota"
+TIMESTAMP=$(date +%s)
+EXPIRES=1800  # 签名有效期（秒）
+
+# 构造签名字符串
+SIGNING_STR="GET\n${PATH}\n\ntimestamp=${TIMESTAMP}&expires=${EXPIRES}"
+
+# 计算HMAC-SHA256签名并Base64编码
+SIGNATURE=$(echo -n "${SIGNING_STR}" | openssl dgst -sha256 -hmac "${SECRET_KEY}" -binary | base64)
+
+# 构造Authorization头
+AUTH_HEADER="bce-auth-v1/${API_KEY}/${TIMESTAMP}/${EXPIRES}/${SIGNATURE}"
+
+# 执行curl查询
+curl -X GET \
+  -H "Host: ${HOST}" \
+  -H "Content-Type: application/json" \
+  -H "X-Bce-Signature: ${AUTH_HEADER}" \
+  "https://${HOST}${PATH}?timestamp=${TIMESTAMP}&expires=${EXPIRES}"
+```
+
+### 3. 使用方式
+1. 将上述代码保存为`qianfan_query.sh`。
+2. 替换`API_KEY`和`SECRET_KEY`。
+3. 执行`chmod +x qianfan_query.sh && ./qianfan_query.sh`。
+
+### 4. 返回结果示例（关键字段）
+```json
+{
+  "code": 0,
+  "data": {
+    "quota_list": [
+      {
+        "resource_type": "tokens",
+        "total": 500000,
+        "used": 34567,
+        "remaining": 465433
+      }
+    ]
+  }
+}
+```
+
+### 5. 官方文档
+[百度千帆-签名机制](https://cloud.baidu.com/doc/QIANFAN/s/Plnlmq6xy)
+
+---
+
+## 四、字节豆包（火山引擎，Volc-Auth签名认证）
+字节豆包（火山引擎）采用**Volc-Auth签名机制**，需计算AccessKey + SecretKey的签名，同样提供Shell脚本版curl命令。
+
+### 1. 接口信息
+- **查询接口**：`https://maas.volcengineapi.com/api/v1/account/quota`（豆包账户配额查询）
+- **请求方法**：GET
+- **认证方式**：Volc-Auth签名（需AccessKey + SecretKey）
+- **地域参数**：需指定`Region: cn-beijing`
+
+### 2. Shell脚本+curl命令
+```bash
+#!/bin/bash
+
+# 替换为你的火山引擎密钥
+ACCESS_KEY="your_volc_access_key"
+SECRET_KEY="your_volc_secret_key"
+
+# 固定参数
+HOST="maas.volcengineapi.com"
+PATH="/api/v1/account/quota"
+TIMESTAMP=$(date -u +"%Y%m%dT%H%M%SZ")
+REGION="cn-beijing"
+SERVICE="maas"
+
+# 构造规范请求串
+CANONICAL_REQUEST="GET\n${PATH}\n\nhost:${HOST}\nx-content-sha256:UNSIGNED-PAYLOAD\nx-date:${TIMESTAMP}"
+
+# 构造待签名字符串
+SCOPE="${TIMESTAMP:0:8}/${REGION}/${SERVICE}/request"
+STRING_TO_SIGN="HMAC-SHA256\n${TIMESTAMP}\n${SCOPE}\n$(echo -n "${CANONICAL_REQUEST}" | sha256sum | awk '{print $1}')"
+
+# 计算签名（分步HMAC）
+SIGN_KEY=$(echo -n "${TIMESTAMP:0:8}" | openssl dgst -sha256 -hmac "VolcSecretKey${SECRET_KEY}" -binary)
+SIGN_KEY=$(echo -n "${REGION}" | openssl dgst -sha256 -hmac "${SIGN_KEY}" -binary)
+SIGN_KEY=$(echo -n "${SERVICE}" | openssl dgst -sha256 -hmac "${SIGN_KEY}" -binary)
+SIGN_KEY=$(echo -n "request" | openssl dgst -sha256 -hmac "${SIGN_KEY}" -binary)
+SIGNATURE=$(echo -n "${STRING_TO_SIGN}" | openssl dgst -sha256 -hmac "${SIGN_KEY}" -binary | base64)
+
+# 构造Authorization头
+AUTH_HEADER="Volc-Auth Credential=${ACCESS_KEY}/${SCOPE}, SignedHeaders=host;x-content-sha256;x-date, Signature=${SIGNATURE}"
+
+# 执行curl查询
+curl -X GET \
+  -H "Host: ${HOST}" \
+  -H "x-date: ${TIMESTAMP}" \
+  -H "x-content-sha256: UNSIGNED-PAYLOAD" \
+  -H "Authorization: ${AUTH_HEADER}" \
+  -H "Content-Type: application/json" \
+  "https://${HOST}${PATH}"
+```
+
+### 3. 使用方式
+1. 将上述代码保存为`doubao_query.sh`。
+2. 替换`ACCESS_KEY`和`SECRET_KEY`。
+3. 执行`chmod +x doubao_query.sh && ./doubao_query.sh`。
+
+### 4. 返回结果示例（关键字段）
+```json
+{
+  "code": 0,
+  "data": {
+    "total": 500000,    // 总配额（tokens/月）
+    "used": 12345,      // 已使用量
+    "remaining": 487655 // 剩余量
+  }
+}
+```
+
+### 5. 官方文档
+[火山引擎-签名机制](https://www.volcengine.com/docs/6419/116454)
+
+---
+
+## 集成网站开发建议
+1. **封装为接口**：将上述curl命令转换为后端接口（如Python/Node.js的HTTP请求），前端调用后端接口即可，避免前端暴露密钥。
+2. **缓存结果**：各平台查询结果存在5-15分钟延迟，可缓存查询结果（如5分钟），减少重复请求。
+3. **异常处理**：添加密钥错误、接口超时、配额不足等异常处理逻辑。
+4. **统一返回格式**：将四家平台的返回结果转换为统一的格式（如`{platform: "", total: 0, used: 0, remaining: 0}`），方便前端展示。
+
+这样既满足了curl命令查询的需求，也适配了集成网站的开发场景。
+
+3. 方式二：curl 命令调用 API 查询（适配集成开发）
+硅基流动提供账户余额和用量统计两个核心查询接口，均支持 GET 请求和 Bearer Token 认证。
+（1）查询账户余额（金额 / 配额）
+接口地址：https://api.siliconflow.cn/v1/account/balance请求方法：GET认证方式：Authorization: Bearer {你的API Key}
+bash
+运行
+# 替换为你的硅基流动API Key
+SILICONFLOW_API_KEY="your_siliconflow_api_key"
+
+# curl查询账户余额
+curl -X GET \
+  -H "Authorization: Bearer ${SILICONFLOW_API_KEY}" \
+  -H "Content-Type: application/json" \
+  "https://api.siliconflow.cn/v1/account/balance"
+返回结果示例（关键字段）：
+json
+{
+  "code": 200,
+  "data": {
+    "total_balance": 100.0,    // 账户总余额（元）
+    "used_balance": 12.5,      // 已使用金额（元）
+    "remaining_balance": 87.5, // 剩余余额（元）
+    "free_quota": 500000,      // 免费Token配额
+    "used_free_quota": 12345,  // 已使用免费Token
+    "remaining_free_quota": 487655 // 剩余免费Token
+  }
+}
+（2）查询用量统计（Token / 调用次数）
+接口地址：https://api.siliconflow.cn/v1/account/usage请求参数：start_time（开始时间）、end_time（结束时间）、model（模型名称，可选）请求方法：GET
+bash
+运行
+# 替换为你的API Key和时间范围
+SILICONFLOW_API_KEY="your_siliconflow_api_key"
+START_TIME="2025-01-01T00:00:00Z"
+END_TIME="2025-01-31T23:59:59Z"
+
+# curl查询用量统计
+curl -X GET \
+  -H "Authorization: Bearer ${SILICONFLOW_API_KEY}" \
+  "https://api.siliconflow.cn/v1/account/usage?start_time=${START_TIME}&end_time=${END_TIME}&model=deepseek-chat"
+返回结果示例：
+json
+{
+  "code": 200,
+  "data": {
+    "total_calls": 1200,       // 总调用次数
+    "total_input_tokens": 56000, // 总输入Token
+    "total_output_tokens": 120000, // 总输出Token
+    "total_tokens": 176000     // 总消耗Token
+  }
+}

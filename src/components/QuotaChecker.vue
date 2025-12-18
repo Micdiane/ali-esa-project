@@ -136,14 +136,19 @@ const checkQuota = async () => {
     }
     
     // 调用真实API获取余额信息
-    const balanceData = await checkBalance(selectedKey.platform, selectedKey.key);
+    const balanceData = await checkBalance(
+      selectedKey.platform,
+      selectedKey.key,
+      undefined, // baseUrl
+      selectedKey.secret // 传递 secret 参数（如果存在）
+    );
     
     // 处理不同平台的返回数据，统一格式
     const quotaData: QuotaInfo = {
       platform: selectedKey.platform,
-      remainingTokens: balanceData.remaining_tokens || balanceData.available_tokens || 0,
-      usedRatio: balanceData.used_ratio || balanceData.usage_ratio || 0,
-      resetTime: balanceData.reset_time || balanceData.next_reset || '每月 1 日',
+      remainingTokens: balanceData.remaining_tokens || 0,
+      usedRatio: balanceData.used_ratio || 0,
+      resetTime: balanceData.reset_time || '每月 1 日',
       lastChecked: new Date()
     };
     

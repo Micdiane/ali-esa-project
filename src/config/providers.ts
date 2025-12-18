@@ -21,6 +21,7 @@ export const PROVIDERS: Record<string, ProviderConfig> = {
     defaultBase: 'https://aip.baidubce.com',
     defaultModel: 'ERNIE-3.5-8K',
     defaultTestModel: 'ERNIE-3.5-8K',
+    requiresSecret: true, // 需要 Secret Key
     hasBalanceCheck: true,
     color: '#4285F4'
   },
@@ -57,6 +58,7 @@ export const PROVIDERS: Record<string, ProviderConfig> = {
     defaultBase: 'https://api.doubao.com',
     defaultModel: 'doubao-lite-128k',
     defaultTestModel: 'doubao-lite-128k',
+    requiresSecret: true, // 需要 Secret Key
     hasBalanceCheck: true,
     color: '#45B7D1'
   },

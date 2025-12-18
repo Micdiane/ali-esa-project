@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { PROVIDERS } from '../config/providers';
+import CryptoJS from 'crypto-js';
 
 // API 请求配置
 const apiClient = axios.create({
@@ -117,7 +118,7 @@ export const checkApiKey = async (providerId: string, token: string, baseUrl?: s
 };
 
 // 查询余额
-export const checkBalance = async (providerId: string, token: string, baseUrl?: string) => {
+export const checkBalance = async (providerId: string, token: string, baseUrl?: string, secret?: string) => {
   const provider = PROVIDERS[providerId];
   if (!provider) {
     throw new Error(`不支持的平台: ${providerId}`);
@@ -131,11 +132,13 @@ export const checkBalance = async (providerId: string, token: string, baseUrl?: 
     // 根据平台类型调用不同的余额查询方法
     switch (providerId) {
       case 'baidu_qianfan':
-        return await checkBaiduQianfanBalance(token, baseUrl);
+        return await checkBaiduQianfanBalance(token, baseUrl, secret);
       case 'tongyi_qianwen':
         return await checkTongyiQianwenBalance(token, baseUrl);
       case 'zhipu_glm':
         return await checkZhipuGLMBalance(token, baseUrl);
+      case 'doubao':
+        return await checkDoubaoBalance(token, baseUrl, secret);
       default:
         throw new Error(`尚未实现 ${provider.name} 的余额查询`);
     }
@@ -341,43 +344,189 @@ async function checkAnthropicToken(token: string, baseUrl?: string) {
 // ========== 余额查询实现 ==========
 
 // 百度千帆余额查询
-async function checkBaiduQianfanBalance(token: string, baseUrl?: string) {
-  // 百度千帆余额查询接口
-  const apiUrl = `${baseUrl || PROVIDERS.baidu_qianfan!.defaultBase}/rpc/2.0/ai_custom/v1/wenxinworkshop/account/quota`;
+async function checkBaiduQianfanBalance(token: string, _baseUrl?: string, secret?: string) {
+  if (!secret) {
+    throw new Error('百度千帆需要提供 Secret Key，请在密钥中添加 Secret 字段');
+  }
+
+  // 百度千帆余额查询接口 - 使用真实API，需要BCE-Auth-V1签名
+  const host = 'qianfan.baidubce.com';
+  const path = '/v2/resource/quota';
+  const timestamp = Math.floor(Date.now() / 1000);
+  const expires = 1800; // 签名有效期（秒）
+
+  // 构造签名字符串
+  const signingStr = `GET\n${path}\n\ntimestamp=${timestamp}&expires=${expires}`;
+
+  // 计算HMAC-SHA256签名并Base64编码
+  const signature = CryptoJS.HmacSHA256(signingStr, secret).toString(CryptoJS.enc.Base64);
+
+  // 构造Authorization头
+  const authHeader = `bce-auth-v1/${token}/${timestamp}/${expires}/${signature}`;
+
+  // 执行查询
+  const apiUrl = `https://${host}${path}?timestamp=${timestamp}&expires=${expires}`;
   const response = await proxiedFetch(apiUrl, {
     method: 'GET',
     headers: {
-      "Authorization": `Bearer ${token}`
+      'Host': host,
+      'Content-Type': 'application/json',
+      'X-Bce-Signature': authHeader
     }
   });
   const data = await response.json();
-  return data.result || {};
+
+  // 解析真实API响应格式
+  if (data.code === 0 && data.data) {
+    const quotaList = data.data.quota_list || [];
+    let totalQuota = 0;
+    let totalUsed = 0;
+    let totalRemaining = 0;
+
+    quotaList.forEach((quota: any) => {
+      totalQuota += quota.total || 0;
+      totalUsed += quota.used || 0;
+      totalRemaining += quota.remaining || 0;
+    });
+
+    return {
+      remaining_tokens: totalRemaining,
+      total_tokens: totalQuota,
+      used_tokens: totalUsed,
+      used_ratio: totalQuota > 0 ? totalUsed / totalQuota : 0,
+      reset_time: '每月 1 日'
+    };
+  }
+
+  throw new Error(data.message || '查询失败');
 }
 
 // 通义千问余额查询
-async function checkTongyiQianwenBalance(token: string, baseUrl?: string) {
-  // 通义千问余额查询接口
-  const apiUrl = `${baseUrl || PROVIDERS.tongyi_qianwen!.defaultBase}/api/v1/account/quota`;
+async function checkTongyiQianwenBalance(token: string, _baseUrl?: string) {
+  // 通义千问余额查询接口 - 使用真实API
+  const apiUrl = `https://dashscope.aliyuncs.com/api/v1/quotas`;
   const response = await proxiedFetch(apiUrl, {
     method: 'GET',
     headers: {
-      "Authorization": `Bearer ${token}`
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json"
     }
   });
   const data = await response.json();
-  return data || {};
+
+  // 解析真实API响应格式
+  if (data.quotas && data.quotas.length > 0) {
+    // 汇总所有模型的配额
+    let totalQuota = 0;
+    let totalUsed = 0;
+    let totalRemaining = 0;
+
+    data.quotas.forEach((quota: any) => {
+      totalQuota += quota.total || 0;
+      totalUsed += quota.used || 0;
+      totalRemaining += quota.remaining || 0;
+    });
+
+    return {
+      remaining_tokens: totalRemaining,
+      total_tokens: totalQuota,
+      used_tokens: totalUsed,
+      used_ratio: totalQuota > 0 ? totalUsed / totalQuota : 0,
+      reset_time: '每月 1 日'
+    };
+  }
+
+  throw new Error('查询失败或无配额数据');
 }
 
 // 智谱 GLM 余额查询
-async function checkZhipuGLMBalance(token: string, baseUrl?: string) {
-  // 智谱 GLM 余额查询接口
-  const apiUrl = `${baseUrl || PROVIDERS.zhipu_glm!.defaultBase}/api/paas/v3/user/balance`;
+async function checkZhipuGLMBalance(token: string, _baseUrl?: string) {
+  // 智谱 GLM 余额查询接口 - 使用真实API
+  const apiUrl = `https://open.bigmodel.cn/api/paas/v4/account/quota`;
   const response = await proxiedFetch(apiUrl, {
     method: 'GET',
     headers: {
-      "Authorization": `Bearer ${token}`
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json"
     }
   });
   const data = await response.json();
-  return data.data || {};
+
+  // 解析真实API响应格式
+  if (data.code === 200 && data.data) {
+    const { quota, used, remaining } = data.data;
+    return {
+      remaining_tokens: remaining || 0,
+      total_tokens: quota || 0,
+      used_tokens: used || 0,
+      used_ratio: quota > 0 ? used / quota : 0,
+      reset_time: '每月 1 日'
+    };
+  }
+
+  throw new Error(data.message || '查询失败');
+}
+
+// 字节豆包余额查询
+async function checkDoubaoBalance(token: string, _baseUrl?: string, secret?: string) {
+  if (!secret) {
+    throw new Error('字节豆包需要提供 Secret Key，请在密钥中添加 Secret 字段');
+  }
+
+  // 字节豆包余额查询接口 - 使用真实API，需要Volc-Auth签名
+  const host = 'maas.volcengineapi.com';
+  const path = '/api/v1/account/quota';
+  const region = 'cn-beijing';
+  const service = 'maas';
+
+  // 生成UTC时间戳 (ISO 8601格式)
+  const now = new Date();
+  const timestamp = now.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const date = timestamp.substring(0, 8);
+
+  // 构造规范请求串
+  const canonicalRequest = `GET\n${path}\n\nhost:${host}\nx-content-sha256:UNSIGNED-PAYLOAD\nx-date:${timestamp}\n\nhost;x-content-sha256;x-date\nUNSIGNED-PAYLOAD`;
+
+  // 构造待签名字符串
+  const scope = `${date}/${region}/${service}/request`;
+  const canonicalRequestHash = CryptoJS.SHA256(canonicalRequest).toString(CryptoJS.enc.Hex);
+  const stringToSign = `HMAC-SHA256\n${timestamp}\n${scope}\n${canonicalRequestHash}`;
+
+  // 计算签名（分步HMAC）
+  let signKey = CryptoJS.HmacSHA256(date, 'VolcSecretKey' + secret);
+  signKey = CryptoJS.HmacSHA256(region, signKey);
+  signKey = CryptoJS.HmacSHA256(service, signKey);
+  signKey = CryptoJS.HmacSHA256('request', signKey);
+  const signature = CryptoJS.HmacSHA256(stringToSign, signKey).toString(CryptoJS.enc.Hex);
+
+  // 构造Authorization头
+  const authHeader = `HMAC-SHA256 Credential=${token}/${scope}, SignedHeaders=host;x-content-sha256;x-date, Signature=${signature}`;
+
+  // 执行查询
+  const apiUrl = `https://${host}${path}`;
+  const response = await proxiedFetch(apiUrl, {
+    method: 'GET',
+    headers: {
+      'Host': host,
+      'x-date': timestamp,
+      'x-content-sha256': 'UNSIGNED-PAYLOAD',
+      'Authorization': authHeader,
+      'Content-Type': 'application/json'
+    }
+  });
+  const data = await response.json();
+
+  // 解析真实API响应格式
+  if (data.code === 0 && data.data) {
+    const { total, used, remaining } = data.data;
+    return {
+      remaining_tokens: remaining || 0,
+      total_tokens: total || 0,
+      used_tokens: used || 0,
+      used_ratio: total > 0 ? used / total : 0,
+      reset_time: '每月 1 日'
+    };
+  }
+
+  throw new Error(data.message || '查询失败');
 }
