@@ -68,7 +68,7 @@ export async function fetchDashscopeModels(token: string, baseUrl?: string) {
   return data.data || [];
 }
 
-export async function checkDashscopeBalance(token: string) {
+export async function checkDashscopeBalance(_token: string) {
   // Dashscope 不支持 API 查询余额
   return {
     message: '阿里云 DashScope 不支持 API 查询余额',

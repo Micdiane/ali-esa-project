@@ -30,6 +30,7 @@ export interface QuotaInfo {
   remainingTokens: number;
   usedRatio: number;
   lastChecked: Date;
+  resetTime?: string;
 }
 
 // 模型信息类型

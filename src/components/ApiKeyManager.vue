@@ -212,7 +212,7 @@ const queryAllKeys = async () => {
 
     for (const platform of platformsToQuery) {
       const platformKeys = apiKeys.value.filter(k => k.platform === platform);
-      if (platformKeys.length > 0) {
+      if (platformKeys.length > 0 && platformKeys[0]) {
         try {
           const modelList = await fetchModelsByPlatform(platform, platformKeys[0].key);
           // 只显示第一个平台的模型列表
